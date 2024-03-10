@@ -1,0 +1,8 @@
+prefix=/home/adrian/RL_ws/install
+
+Name: RL_gazebo_drone
+Description: Description of RL_gazebo_drone
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

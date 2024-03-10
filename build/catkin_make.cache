@@ -1,0 +1,2 @@
+RL_gazebo_drone:ros_numpy
+-DCATKIN_DEVEL_PREFIX=/home/adrian/RL_ws/devel -DCMAKE_INSTALL_PREFIX=/home/adrian/RL_ws/install -G Unix Makefiles
