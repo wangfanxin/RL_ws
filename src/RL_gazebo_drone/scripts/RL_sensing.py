@@ -135,7 +135,7 @@ def set_rc_channel_pwm(channel_id, pwm):
 def yaw3force_to_rpythrust(fx, fy, fz, yaw):
     
     roll = math.atan2(-fy, fz) / math.pi * 180
-    pitch = math.atan2(fx, fz) / math.pi * 180
+    pitch = math.acos(fx, fz) / math.pi * 180
     yaw = yaw
     thrust = (fz/(2.1*9.8/(0.5-0.05))) + 0.05
     # return rpy in degree, thrust in ratio

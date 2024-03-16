@@ -138,7 +138,9 @@ def test(args):
     angles = []
 
     # Start a connection listening on a UDP port
-    connection = mavutil.mavlink_connection('udpin:localhost:14551')
+    # connection = mavutil.mavlink_connection('udpin:localhost:14551')
+
+    connection = mavutil.mavlink_connection('/dev/ttyACM0')
 
     # Wait for the first heartbeat to set the system and component ID of remote system for the link
     connection.wait_heartbeat()
@@ -356,7 +358,7 @@ if __name__ == '__main__':
     parser.add_argument('--output', default='output', type=str, help='')
     parser.add_argument('--control_mode', default='takeoff', type=str, help='')
     parser.add_argument('--load_model', default=False, type=bool, help='load trained model for train function')
-    parser.add_argument('--load_model_path', default='/home/adrian/RL_ws/src/RL_gazebo_drone/scripts/checkpoints/takeoff_NED_25m_50hz_03', type=str, help='path to trained model (caution: do not use it for model saving)')
+    parser.add_argument('--load_model_path', default='/home/adrian/RL_ws/src/RL_gazebo_drone/scripts/checkpoints/good_take_off', type=str, help='path to trained model (caution: do not use it for model saving)')
     parser.add_argument('--save_model_path', default='checkpoints', type=str, help='path to save model')
     parser.add_argument('--mode', default='test', type=str, help='train or evaluate')
     

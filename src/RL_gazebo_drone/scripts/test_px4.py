@@ -3,6 +3,7 @@ from agent import SAC
 from pyquaternion import Quaternion
 import numpy as np
 import argparse
+import matplotlib.pyplot as plt
 
 def test(args):
     env = QuadrotorEnv()
@@ -35,7 +36,11 @@ def test(args):
         state = next_state
     states = np.array(states)
     angles = np.array(angles)
-    render1(states, angles)
+    plt.plot(states[:,0])
+    plt.plot(states[:,1])
+    plt.plot(states[:,2])
+    plt.show()
+    # render1(states, angles)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='PyTorch Soft Actor-Critic Args')
@@ -68,7 +73,7 @@ if __name__ == '__main__':
     parser.add_argument('--output', default='output', type=str, help='')
     parser.add_argument('--control_mode', default='takeoff', type=str, help='')
     parser.add_argument('--load_model', default=False, type=bool, help='load trained model for train function')
-    parser.add_argument('--load_model_path', default='/home/adrian/RL_ws/src/RL_gazebo_drone/scripts/checkpoints/takeoff_NED_25m_50hz_03', type=str, help='path to trained model (caution: do not use it for model saving)')
+    parser.add_argument('--load_model_path', default='/home/adrian/RL_ws/src/RL_gazebo_drone/scripts/checkpoints/good_take_off', type=str, help='path to trained model (caution: do not use it for model saving)')
     parser.add_argument('--save_model_path', default='checkpoints', type=str, help='path to save model')
     parser.add_argument('--mode', default='test', type=str, help='train or evaluate')
     

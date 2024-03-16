@@ -118,7 +118,10 @@ class QuadrotorEnv(gym.Env):
         f_z = action[2] # in world frame
 
         roll = -np.arcsin(f_y/f_total) # phi
-        pitch = np.arctan2(f_x, f_z) # theta   y, x == y/x
+        
+        pitch = np.arctan2(f_x, f_z) # wrong
+        pitch = np.arctan(f_x/f_z) # correct
+
         yaw = self.desired_yaw
         q = Quaternion(axis=[0, 0, 1], angle=yaw) * Quaternion(axis=[0, 1, 0], angle=pitch) * Quaternion(axis=[1, 0, 0], angle=roll)
         self.quaternion = np.array([q[0], q[1], q[2], q[3]])

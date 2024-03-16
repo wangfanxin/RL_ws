@@ -66,7 +66,8 @@ def quart_to_rpy(x, y, z, w):
 
 def rpy_to_quat(r,p,y):
     # Create a rotation object from Euler angles specifying axes of rotation
-    rot = Rotation.from_euler('xyz', [r,p,y], degrees=False)
+    # rot = Rotation.from_euler('zyx', [r,p,y], degrees=False)
+    rot = Rotation.from_euler('zyx', [y,p,r], degrees=False)
     rot_quat = rot.as_quat() # x,y,z,w
     quat = [rot_quat[3], rot_quat[0], rot_quat[1], rot_quat[2]]  # w,x,y,z
     return quat
@@ -91,33 +92,6 @@ def request_message_interval(connection, message_id, frequency_hz):
     )
 
 
-# def set_target_attitude_throttle(connection, boot_time, thrust_3d_ned):
-#     """ Sets the target attitude while in depth-hold mode.
-
-#     'roll', 'pitch', and 'yaw' are angles in degrees.
-
-#     """
-#     connection.mav.set_attitude_target_send(
-#         int(1e3 * (time.time() - boot_time)), # ms since boot
-#         connection.target_system, connection.target_component,
-#         # allow throttle to be controlled by depth_hold mode
-#         0b11100111,
-#         # -> attitude quaternion (w, x, y, z | zero-rotation is 1, 0, 0, 0)
-#         [1,0,0,0],0,0,0, # quat, roll rate, pitch rate, yaw rate
-#         0, [(thrust_3d_ned[0]/(2.1*9.8/(0.5-0.05))) + 0.06, 
-#             (thrust_3d_ned[1]/(2.1*9.8/(0.5-0.05))) + 0.06, 
-#             (thrust_3d_ned[2]/(2.1*9.8/(0.5-0.05))) + 0.06] #  thrust/z_rate/z_ratio, thrust_3d_ned
-#     )
-
-
-    # 0.5 throttle means hover, this implies that thrust 0.5 == gravity == mass * 9.8 == 2.1 * 9.8 N
-    # saturation 0.05 - 0.95
-    # ratio->thrust      thrust == 2.1*9.8/(0.5-0.05) * (ratio - 0.05)
-    # thrust->ratio      ratio == (thrust/(2.1*9.8/(0.5-0.05))) + 0.05
-    # more details in website: https://docs.google.com/spreadsheets/d/1_75aZqiT_K1CdduhUe4-DjRgx3Alun4p8V2pt6vM5P8/edit#gid=0
-    # more details in website: https://docs.google.com/spreadsheets/d/1dymF2TC28N2Mu_rkw31S5rMkdSGRO-Go9Q7r3SkbNuA/edit#gid=0
-
-
 def set_target_attitude_throttle_easy(connection, boot_time, action):
     """ Sets the target attitude while in depth-hold mode.
 
@@ -131,9 +105,9 @@ def set_target_attitude_throttle_easy(connection, boot_time, action):
         int(1e3 * (time.time() - boot_time)), # ms since boot
         connection.target_system, connection.target_component,
         # allow throttle to be controlled by depth_hold mode
-        0b00000111, #use throttle_k and rpy only
+        0b00000111, #use throttle and rpy(quat form) only
         # -> attitude quaternion (w, x, y, z | zero-rotation is 1, 0, 0, 0)
-        [1,0,0,0],0,0,0, # quat, roll rate, pitch rate, yaw rate
+        quat,0,0,0, # quat, roll rate, pitch rate, yaw rate
         thrust_k, 0 #  thrust/z_rate/z_ratio, thrust_3d_ned
     )
 
@@ -150,11 +124,12 @@ def set_target_attitude_throttle_easy(connection, boot_time, action):
 
 def yaw3force_to_quat_thrust(fx, fy, fz, yaw):
     
-    f_total = np.sqrt(fx**2 + fy**2 + fz**2)
-
+    f_total = -np.sqrt(fx**2 + fy**2 + fz**2)
 
     roll = -np.arcsin(fy/f_total) # phi
-    pitch = np.arctan2(fx, -fz) # theta   y, x == y/x ??????????
+    
+    pitch = np.arctan(fx/fz) # theta   y, x == y/x
+
     yaw = yaw
     
     while roll > np.pi  or roll < -np.pi:
@@ -171,15 +146,12 @@ def yaw3force_to_quat_thrust(fx, fy, fz, yaw):
 
     print('rpy',roll, pitch, yaw)
 
-
     quat = rpy_to_quat(roll, pitch, yaw)
 
-    # quat_ned = quat_enu2ned(quat)
-
-    thrust_k = (f_total/(2*9.81/(0.29-0.00))) + 0.00
-    # thrust_k = (-fz/(1.75*9.81/(0.5-0.06))) + 0.06
-    # return rpy in degree, thrust in ratio
+    # thrust_k = (f_total/(2*9.81/(0.50-0.0))) + 0.0  # relative throttle
+    thrust_k = -(f_total/(2*9.81/(0.29-0.0))) + 0.0  # absolute throttle
     print(quat, thrust_k)
+
     return quat, thrust_k
 
 
@@ -217,8 +189,6 @@ def test(args):
     boot_time = time.time()
 
 
-    target_mode =  0
-    connection.set_mode(target_mode)
 
     time.sleep(1)
 
@@ -239,6 +209,8 @@ def test(args):
     y_record = [0]
     z_record = [0]
 
+
+
     while not done:
         
         msg = connection.recv_match()
@@ -253,7 +225,7 @@ def test(args):
             # append ned position into enu records
             x_record[0] = msg.x
             y_record[0] = msg.y
-            z_record[0] = msg.z
+            z_record[0] = msg.z + 0.3
             # append ned velocity into enu records
         if x_record[0] != 0:
             break
@@ -262,6 +234,10 @@ def test(args):
     vx_record = [0]
     vy_record = [0]
     vz_record = [0]
+
+
+
+
     time_last = time.time()
     time_start = time.time()
 
@@ -330,16 +306,11 @@ def test(args):
         ang_vel = 0.05 / 3.0
         theta = ang_vel * time_record[-1] / np.pi * 180
 
-        state[10] = 3.0 * np.cos(theta) # x
-        state[11] = 3.0 * np.sin(theta) # y
-        state[12] = 0.05 * np.sin(theta) # dx
-        state[13] = 0.05 * np.cos(theta) # dy
-
+        state[10:] = [0,0,0,0]
         state[0:10] = [x_record[-1],y_record[-1],z_record[-1],vx_record[-1],vy_record[-1],vz_record[-1],
                        quat_ned_collect[0],quat_ned_collect[1], quat_ned_collect[2], quat_ned_collect[3]]
-        state[0:10] = [0.01*np.random.rand(),0.01*np.random.rand(),z_record[-1],0.01*np.random.rand(),0.01*np.random.rand(),vz_record[-1],
-                       quat_ned_collect[0],quat_ned_collect[1], quat_ned_collect[2], quat_ned_collect[3]]
-        
+
+ 
         action = agent.select_action(state, eval=True)
         # print(x_record[-1],y_record[-1],z_record[-1],action)
         print(action)
@@ -348,7 +319,7 @@ def test(args):
         # set_target_attitude_throttle(connection, boot_time, [action[1], action[0], action[2]])
         set_target_attitude_throttle_easy(connection, boot_time, action)
 
-        if time.time() - time_start > 50:
+        if time.time() - time_start > 40:
             done = True
         # next_state, reward, done, _ = env.step(action)
         # state = next_state
@@ -415,7 +386,7 @@ if __name__ == '__main__':
     parser.add_argument('--output', default='output', type=str, help='')
     parser.add_argument('--control_mode', default='takeoff', type=str, help='')
     parser.add_argument('--load_model', default=False, type=bool, help='load trained model for train function')
-    parser.add_argument('--load_model_path', default='/home/adrian/RL_ws/src/RL_gazebo_drone/scripts/checkpoints/takeoff_NED_25m_50hz_03', type=str, help='path to trained model (caution: do not use it for model saving)')
+    parser.add_argument('--load_model_path', default='/home/adrian/RL_ws/src/RL_gazebo_drone/scripts/checkpoints/takeoff_0316_700', type=str, help='path to trained model (caution: do not use it for model saving)')
     parser.add_argument('--save_model_path', default='checkpoints', type=str, help='path to save model')
     parser.add_argument('--mode', default='test', type=str, help='train or evaluate')
     
